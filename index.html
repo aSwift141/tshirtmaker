@@ -263,11 +263,15 @@
                 return;
             }
 
+            // Capture current reference images for this job
+            const jobRefImages = [...referenceImagesBase64];
+            const jobJsonGuide = jsonInput.value.trim();
+
             // Create new job
             const job = {
                 id: ++jobIdCounter,
                 prompt: prompt,
-                jsonGuide: jsonInput.value.trim(),
+                jsonGuide: jobJsonGuide,
                 quantity: quantity,
                 model: model,
                 images: [],
@@ -278,47 +282,46 @@
             jobs.unshift(job); // Add to beginning
             renderJobs();
 
-            // Disable button
-            generateBtn.disabled = true;
-            generateBtnText.textContent = 'Generating...';
-            generateLoader.classList.remove('hidden');
+            // Don't disable button - allow multiple concurrent jobs
+            // Show active job count instead
+            updateGenerateButtonState();
 
-            try {
-                // Generate images one by one
-                for (let i = 0; i < quantity; i++) {
-                    console.log(`Starting generation ${i + 1}/${quantity} for job #${job.id}`);
-                    updateJobStatus(job.id, `Generating ${i + 1}/${quantity}...`);
+            // Run generation asynchronously without blocking
+            (async () => {
+                try {
+                    // Generate images one by one
+                    for (let i = 0; i < quantity; i++) {
+                        console.log(`Starting generation ${i + 1}/${quantity} for job #${job.id}`);
+                        updateJobStatus(job.id, `Generating ${i + 1}/${quantity}...`);
 
-                    const design = await generateDesign(
-                        apiKey,
-                        prompt,
-                        jsonInput.value.trim(),
-                        referenceImagesBase64,
-                        model
-                    );
+                        const design = await generateDesign(
+                            apiKey,
+                            prompt,
+                            jobJsonGuide,
+                            jobRefImages,
+                            model
+                        );
 
-                    console.log(`Design ${i + 1}/${quantity} completed:`, design);
-                    job.images.push(design);
+                        console.log(`Design ${i + 1}/${quantity} completed:`, design);
+                        job.images.push(design);
 
-                    // Update the UI immediately to show the new image
-                    renderJobs();
-                    console.log(`Job #${job.id} now has ${job.images.length}/${quantity} images`);
+                        // Update the UI immediately to show the new image
+                        renderJobs();
+                        console.log(`Job #${job.id} now has ${job.images.length}/${quantity} images`);
+                    }
+
+                    job.status = 'completed';
+                    updateJobStatus(job.id, 'Completed');
+                    console.log(`Job #${job.id} fully completed with ${job.images.length} images`);
+                } catch (error) {
+                    job.status = 'failed';
+                    job.error = error.message;
+                    updateJobStatus(job.id, 'Failed: ' + error.message);
+                    console.error(error);
+                } finally {
+                    updateGenerateButtonState();
                 }
-
-                job.status = 'completed';
-                updateJobStatus(job.id, 'Completed');
-                console.log(`Job #${job.id} fully completed with ${job.images.length} images`);
-            } catch (error) {
-                job.status = 'failed';
-                job.error = error.message;
-                updateJobStatus(job.id, 'Failed: ' + error.message);
-                alert('Error generating designs: ' + error.message);
-                console.error(error);
-            } finally {
-                generateBtn.disabled = false;
-                generateBtnText.textContent = 'Generate Designs';
-                generateLoader.classList.add('hidden');
-            }
+            })();
         });
 
         // Generate a single design using PiAPI
@@ -611,6 +614,20 @@
             if (job) {
                 job.statusText = status;
                 renderJobs();
+                updateGenerateButtonState();
+            }
+        }
+
+        // Update generate button state based on active jobs
+        function updateGenerateButtonState() {
+            const activeJobs = jobs.filter(j => j.status === 'generating').length;
+
+            if (activeJobs > 0) {
+                generateBtnText.textContent = `Generating (${activeJobs} active)`;
+                generateLoader.classList.remove('hidden');
+            } else {
+                generateBtnText.textContent = 'Generate Designs';
+                generateLoader.classList.add('hidden');
             }
         }
 
