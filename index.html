@@ -244,8 +244,9 @@
             generateLoader.classList.remove('hidden');
 
             try {
-                // Generate images
+                // Generate images one by one
                 for (let i = 0; i < quantity; i++) {
+                    console.log(`Starting generation ${i + 1}/${quantity} for job #${job.id}`);
                     updateJobStatus(job.id, `Generating ${i + 1}/${quantity}...`);
 
                     const design = await generateDesign(
@@ -255,12 +256,17 @@
                         referenceImagesBase64
                     );
 
+                    console.log(`Design ${i + 1}/${quantity} completed:`, design);
                     job.images.push(design);
+
+                    // Update the UI immediately to show the new image
                     renderJobs();
+                    console.log(`Job #${job.id} now has ${job.images.length}/${quantity} images`);
                 }
 
                 job.status = 'completed';
                 updateJobStatus(job.id, 'Completed');
+                console.log(`Job #${job.id} fully completed with ${job.images.length} images`);
             } catch (error) {
                 job.status = 'failed';
                 job.error = error.message;
@@ -357,26 +363,53 @@
 
                 const result = await response.json();
                 console.log(`Poll attempt ${i + 1}:`, result);
+                console.log('Full result structure:', JSON.stringify(result, null, 2));
 
                 // Check for completion in nested structure
                 let data = result.data || result;
 
                 if (data.status === 'completed' || data.status === 'success' || data.status === 'succeeded') {
+                    console.log('Task completed! Looking for image URL...');
+                    console.log('data object:', data);
+
                     // Try different paths for the image URL
                     let imageUrl = null;
 
+                    // Check all possible paths
                     if (data.output && data.output.images && data.output.images.length > 0) {
                         imageUrl = data.output.images[0];
+                        console.log('Found URL in data.output.images[0]:', imageUrl);
                     } else if (data.output && data.output.image_url) {
                         imageUrl = data.output.image_url;
+                        console.log('Found URL in data.output.image_url:', imageUrl);
+                    } else if (data.output && typeof data.output === 'string') {
+                        imageUrl = data.output;
+                        console.log('Found URL in data.output (string):', imageUrl);
                     } else if (data.images && data.images.length > 0) {
                         imageUrl = data.images[0];
+                        console.log('Found URL in data.images[0]:', imageUrl);
                     } else if (data.image_url) {
                         imageUrl = data.image_url;
+                        console.log('Found URL in data.image_url:', imageUrl);
+                    } else if (data.url) {
+                        imageUrl = data.url;
+                        console.log('Found URL in data.url:', imageUrl);
+                    } else if (typeof data.output === 'object' && data.output !== null) {
+                        // Check if output has any property that looks like a URL
+                        for (let key in data.output) {
+                            if (typeof data.output[key] === 'string' && data.output[key].includes('http')) {
+                                imageUrl = data.output[key];
+                                console.log(`Found URL in data.output.${key}:`, imageUrl);
+                                break;
+                            }
+                        }
                     }
 
                     if (imageUrl) {
+                        console.log('Successfully extracted image URL:', imageUrl);
                         return { url: imageUrl, taskId: taskId };
+                    } else {
+                        console.error('Could not find image URL in completed response:', data);
                     }
                 }
 
@@ -574,18 +607,24 @@
 
             try {
                 for (let i = 0; i < 4; i++) {
+                    console.log(`Creating variation ${i + 1}/4 for job #${newJob.id}`);
                     updateJobStatus(newJob.id, `Creating variation ${i + 1}/4...`);
 
                     const editPrompt = `Create a variation of this t-shirt design. Keep the same general theme and style but change details, colors, or composition. Maintain 30-50% negative space, plain background, no mockup whatsoever.`;
 
                     const design = await generateEditedDesign(apiKey, editPrompt, selectedImage.url);
 
+                    console.log(`Variation ${i + 1}/4 completed:`, design);
                     newJob.images.push(design);
+
+                    // Update the UI immediately
                     renderJobs();
+                    console.log(`Job #${newJob.id} now has ${newJob.images.length}/4 variations`);
                 }
 
                 newJob.status = 'completed';
                 updateJobStatus(newJob.id, 'Completed');
+                console.log(`Job #${newJob.id} variations completed`);
             } catch (error) {
                 newJob.status = 'failed';
                 newJob.error = error.message;
@@ -621,6 +660,7 @@
 
             try {
                 for (let i = 0; i < newJob.quantity; i++) {
+                    console.log(`Regenerating ${i + 1}/${newJob.quantity} for job #${newJob.id}`);
                     updateJobStatus(newJob.id, `Generating ${i + 1}/${newJob.quantity}...`);
 
                     const design = await generateDesign(
@@ -630,12 +670,17 @@
                         referenceImagesBase64
                     );
 
+                    console.log(`Regenerated design ${i + 1}/${newJob.quantity} completed:`, design);
                     newJob.images.push(design);
+
+                    // Update the UI immediately
                     renderJobs();
+                    console.log(`Job #${newJob.id} now has ${newJob.images.length}/${newJob.quantity} images`);
                 }
 
                 newJob.status = 'completed';
                 updateJobStatus(newJob.id, 'Completed');
+                console.log(`Job #${newJob.id} regeneration completed`);
             } catch (error) {
                 newJob.status = 'failed';
                 newJob.error = error.message;
