@@ -308,12 +308,13 @@
             // Prepare the request body using PiAPI's unified API schema
             const requestBody = {
                 model: "gemini",
-                task_type: "gemini-2.5-flash-image",
+                task_type: "nano-banana-pro",
                 input: {
                     prompt: fullPrompt,
-                    num_images: 1,
+                    output_format: "png",
                     aspect_ratio: "1:1",
-                    output_format: "png"
+                    resolution: "1K",
+                    safety_level: "high"
                 }
             };
 
@@ -338,14 +339,19 @@
             }
 
             const data = await response.json();
+            console.log('API Response:', data); // Debug logging
 
             // Poll for result if task_id is returned
             if (data.task_id) {
                 return await pollForResult(apiKey, data.task_id);
+            } else if (data.data && data.data.task_id) {
+                // Handle nested task_id format
+                return await pollForResult(apiKey, data.data.task_id);
             } else if (data.images && data.images.length > 0) {
                 return { url: data.images[0], taskId: data.task_id };
             } else {
-                throw new Error('Unexpected API response format');
+                console.error('Unexpected response format:', data);
+                throw new Error(`Unexpected API response format: ${JSON.stringify(data)}`);
             }
         }
 
@@ -365,11 +371,16 @@
                 }
 
                 const data = await response.json();
+                console.log(`Poll attempt ${i + 1}:`, data); // Debug logging
 
+                // Handle different possible response formats
                 if (data.status === 'completed' && data.output && data.output.images && data.output.images.length > 0) {
                     return { url: data.output.images[0], taskId: taskId };
-                } else if (data.status === 'failed') {
-                    throw new Error('Image generation failed');
+                } else if (data.data && data.data.status === 'completed' && data.data.output && data.data.output.images) {
+                    return { url: data.data.output.images[0], taskId: taskId };
+                } else if (data.status === 'failed' || (data.data && data.data.status === 'failed')) {
+                    const errorMsg = data.error || (data.data && data.data.error) || 'Image generation failed';
+                    throw new Error(errorMsg);
                 }
 
                 // Continue polling if still processing
@@ -456,12 +467,13 @@
                 // Make API request with the current design as reference using unified API schema
                 const requestBody = {
                     model: "gemini",
-                    task_type: "gemini-2.5-flash-image",
+                    task_type: "nano-banana-pro",
                     input: {
                         prompt: editFullPrompt,
-                        num_images: 1,
-                        aspect_ratio: "1:1",
                         output_format: "png",
+                        aspect_ratio: "1:1",
+                        resolution: "1K",
+                        safety_level: "high",
                         reference_images: [selectedDesign.url] // Use the current design as reference
                     }
                 };
@@ -481,14 +493,19 @@
                 }
 
                 const data = await response.json();
+                console.log('Edit API Response:', data); // Debug logging
                 let editedDesign;
 
                 if (data.task_id) {
                     editedDesign = await pollForResult(apiKey, data.task_id);
+                } else if (data.data && data.data.task_id) {
+                    // Handle nested task_id format
+                    editedDesign = await pollForResult(apiKey, data.data.task_id);
                 } else if (data.images && data.images.length > 0) {
                     editedDesign = { url: data.images[0], taskId: data.task_id };
                 } else {
-                    throw new Error('Unexpected API response format');
+                    console.error('Unexpected edit response format:', data);
+                    throw new Error(`Unexpected API response format: ${JSON.stringify(data)}`);
                 }
 
                 // Update the design
