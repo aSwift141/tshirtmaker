@@ -1,0 +1,104 @@
+{
+  "examples": [
+    {
+      "name": "Minimalist Modern",
+      "json": {
+        "style": "minimalist",
+        "colors": ["black", "white"],
+        "theme": "geometric",
+        "mood": "clean and modern",
+        "elements": "simple shapes, line art"
+      }
+    },
+    {
+      "name": "Retro Vintage",
+      "json": {
+        "style": "retro",
+        "colors": ["orange", "brown", "cream", "mustard"],
+        "theme": "1970s vintage",
+        "mood": "nostalgic and warm",
+        "elements": "sunsets, typography, groovy patterns"
+      }
+    },
+    {
+      "name": "Streetwear Bold",
+      "json": {
+        "style": "urban streetwear",
+        "colors": ["black", "white", "red", "neon green"],
+        "theme": "edgy and bold",
+        "mood": "rebellious and energetic",
+        "elements": "graffiti style, bold typography, abstract shapes"
+      }
+    },
+    {
+      "name": "Nature Organic",
+      "json": {
+        "style": "organic hand-drawn",
+        "colors": ["forest green", "earth brown", "sage", "cream"],
+        "theme": "nature and wilderness",
+        "mood": "calm and natural",
+        "elements": "leaves, mountains, animals, botanical illustrations"
+      }
+    },
+    {
+      "name": "Japanese Traditional",
+      "json": {
+        "style": "traditional Japanese art",
+        "colors": ["black", "red", "gold", "white"],
+        "theme": "Japanese culture",
+        "mood": "elegant and timeless",
+        "elements": "cherry blossoms, waves, dragons, koi fish, traditional patterns"
+      }
+    },
+    {
+      "name": "Cyberpunk Future",
+      "json": {
+        "style": "cyberpunk futuristic",
+        "colors": ["neon blue", "neon pink", "black", "purple"],
+        "theme": "dystopian future",
+        "mood": "high-tech and mysterious",
+        "elements": "circuits, glitch effects, kanji characters, grid patterns"
+      }
+    },
+    {
+      "name": "Skate Culture",
+      "json": {
+        "style": "skateboard graphics",
+        "colors": ["black", "white", "bright red", "yellow"],
+        "theme": "skate and punk",
+        "mood": "rebellious and playful",
+        "elements": "cartoon characters, flames, skulls, bold outlines"
+      }
+    },
+    {
+      "name": "Bohemian Artistic",
+      "json": {
+        "style": "bohemian artistic",
+        "colors": ["terracotta", "sage green", "mustard", "dusty pink"],
+        "theme": "free-spirited and artistic",
+        "mood": "dreamy and creative",
+        "elements": "mandalas, celestial symbols, crystals, abstract watercolor"
+      }
+    },
+    {
+      "name": "Horror Dark",
+      "json": {
+        "style": "dark horror aesthetic",
+        "colors": ["black", "blood red", "bone white", "dark purple"],
+        "theme": "gothic and macabre",
+        "mood": "dark and mysterious",
+        "elements": "skulls, occult symbols, gothic architecture, dark creatures"
+      }
+    },
+    {
+      "name": "Surf Beach",
+      "json": {
+        "style": "surf and beach culture",
+        "colors": ["turquoise", "coral", "sand beige", "ocean blue"],
+        "theme": "beach and ocean",
+        "mood": "relaxed and tropical",
+        "elements": "waves, palm trees, surfboards, sun, tropical flowers"
+      }
+    }
+  ]
+}

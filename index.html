@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T-Shirt AI Design Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .loading {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .design-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .design-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .selected {
+            border: 3px solid #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-100 to-blue-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-5xl font-bold text-gray-800 mb-2">T-Shirt AI Design Generator</h1>
+            <p class="text-gray-600">Create stunning t-shirt designs with AI</p>
+        </div>
+
+        <!-- API Key Section -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">API Configuration</h2>
+            <div class="mb-4">
+                <label for="apiKey" class="block text-sm font-medium text-gray-700 mb-2">PiAPI Key</label>
+                <input
+                    type="password"
+                    id="apiKey"
+                    placeholder="Enter your PiAPI key"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                <p class="text-sm text-gray-500 mt-1">Get your API key from <a href="https://piapi.ai" target="_blank" class="text-blue-500 hover:underline">piapi.ai</a></p>
+            </div>
+        </div>
+
+        <!-- Input Section -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Design Inputs</h2>
+
+            <!-- JSON Input (Optional) -->
+            <div class="mb-6">
+                <label for="jsonInput" class="block text-sm font-medium text-gray-700 mb-2">
+                    JSON Style Guide <span class="text-gray-400">(Optional)</span>
+                </label>
+                <textarea
+                    id="jsonInput"
+                    rows="4"
+                    placeholder='{"style": "minimalist", "colors": ["black", "white"], "theme": "geometric"}'
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                ></textarea>
+                <p class="text-sm text-gray-500 mt-1">Provide a JSON object to guide the design style</p>
+            </div>
+
+            <!-- Reference Images (Optional) -->
+            <div class="mb-6">
+                <label for="referenceImages" class="block text-sm font-medium text-gray-700 mb-2">
+                    Reference Images <span class="text-gray-400">(Optional)</span>
+                </label>
+                <input
+                    type="file"
+                    id="referenceImages"
+                    multiple
+                    accept="image/*"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                <p class="text-sm text-gray-500 mt-1">Upload reference images to inspire the design</p>
+                <div id="imagePreview" class="mt-3 flex flex-wrap gap-2"></div>
+            </div>
+
+            <!-- Design Prompt (Required) -->
+            <div class="mb-6">
+                <label for="designPrompt" class="block text-sm font-medium text-gray-700 mb-2">
+                    Design Prompt <span class="text-red-500">*</span>
+                </label>
+                <textarea
+                    id="designPrompt"
+                    rows="4"
+                    placeholder="Describe your t-shirt design (e.g., 'A fierce dragon wrapped around a mountain with cherry blossoms')"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                ></textarea>
+            </div>
+
+            <!-- Quantity Selector -->
+            <div class="mb-6">
+                <label for="quantity" class="block text-sm font-medium text-gray-700 mb-2">
+                    Number of Designs
+                </label>
+                <input
+                    type="number"
+                    id="quantity"
+                    min="1"
+                    max="10"
+                    value="3"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+            </div>
+
+            <!-- Generate Button -->
+            <button
+                id="generateBtn"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center"
+            >
+                <span id="generateBtnText">Generate Designs</span>
+                <div id="generateLoader" class="loading ml-3 hidden"></div>
+            </button>
+        </div>
+
+        <!-- Progress Section -->
+        <div id="progressSection" class="bg-white rounded-lg shadow-lg p-6 mb-6 hidden">
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">Generation Progress</h3>
+            <div class="w-full bg-gray-200 rounded-full h-4">
+                <div id="progressBar" class="bg-blue-600 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p id="progressText" class="text-sm text-gray-600 mt-2">Preparing...</p>
+        </div>
+
+        <!-- Generated Designs Gallery -->
+        <div id="designsSection" class="hidden">
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Generated Designs</h2>
+                <div id="designsGallery" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+
+            <!-- Edit Section -->
+            <div id="editSection" class="bg-white rounded-lg shadow-lg p-6 hidden">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Edit Selected Design</h2>
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 mb-2">Selected Design: <span id="selectedDesignId" class="font-semibold"></span></p>
+                    <img id="selectedDesignPreview" src="" alt="Selected design" class="w-64 h-64 object-cover rounded-lg border-2 border-gray-300 mb-4">
+                </div>
+                <div class="mb-4">
+                    <label for="editPrompt" class="block text-sm font-medium text-gray-700 mb-2">
+                        Edit Instructions
+                    </label>
+                    <textarea
+                        id="editPrompt"
+                        rows="3"
+                        placeholder="Describe the changes you want (e.g., 'Make the dragon blue instead of red')"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    ></textarea>
+                </div>
+                <button
+                    id="applyEditBtn"
+                    class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-200 flex items-center"
+                >
+                    <span id="editBtnText">Apply Edits</span>
+                    <div id="editLoader" class="loading ml-3 hidden"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State management
+        let generatedDesigns = [];
+        let selectedDesignIndex = null;
+        let referenceImagesBase64 = [];
+
+        // DOM elements
+        const apiKeyInput = document.getElementById('apiKey');
+        const jsonInput = document.getElementById('jsonInput');
+        const referenceImagesInput = document.getElementById('referenceImages');
+        const imagePreview = document.getElementById('imagePreview');
+        const designPrompt = document.getElementById('designPrompt');
+        const quantityInput = document.getElementById('quantity');
+        const generateBtn = document.getElementById('generateBtn');
+        const generateBtnText = document.getElementById('generateBtnText');
+        const generateLoader = document.getElementById('generateLoader');
+        const progressSection = document.getElementById('progressSection');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const designsSection = document.getElementById('designsSection');
+        const designsGallery = document.getElementById('designsGallery');
+        const editSection = document.getElementById('editSection');
+        const selectedDesignId = document.getElementById('selectedDesignId');
+        const selectedDesignPreview = document.getElementById('selectedDesignPreview');
+        const editPrompt = document.getElementById('editPrompt');
+        const applyEditBtn = document.getElementById('applyEditBtn');
+        const editBtnText = document.getElementById('editBtnText');
+        const editLoader = document.getElementById('editLoader');
+
+        // Handle reference images upload
+        referenceImagesInput.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            imagePreview.innerHTML = '';
+            referenceImagesBase64 = [];
+
+            for (const file of files) {
+                // Create preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'w-20 h-20 object-cover rounded border-2 border-gray-300';
+                    imagePreview.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+
+                // Convert to base64 for API
+                const base64 = await fileToBase64(file);
+                referenceImagesBase64.push(base64);
+            }
+        });
+
+        // Convert file to base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Generate designs
+        generateBtn.addEventListener('click', async () => {
+            const apiKey = apiKeyInput.value.trim();
+            const prompt = designPrompt.value.trim();
+            const quantity = parseInt(quantityInput.value);
+
+            if (!apiKey) {
+                alert('Please enter your PiAPI key');
+                return;
+            }
+
+            if (!prompt) {
+                alert('Please enter a design prompt');
+                return;
+            }
+
+            // Show progress
+            progressSection.classList.remove('hidden');
+            generateBtn.disabled = true;
+            generateBtnText.textContent = 'Generating...';
+            generateLoader.classList.remove('hidden');
+            designsGallery.innerHTML = '';
+            generatedDesigns = [];
+            designsSection.classList.add('hidden');
+            editSection.classList.add('hidden');
+
+            try {
+                for (let i = 0; i < quantity; i++) {
+                    updateProgress(i, quantity, `Generating design ${i + 1} of ${quantity}...`);
+
+                    const design = await generateDesign(apiKey, prompt, jsonInput.value.trim(), referenceImagesBase64);
+                    generatedDesigns.push(design);
+                    addDesignToGallery(design, i);
+                }
+
+                updateProgress(quantity, quantity, 'All designs generated!');
+                designsSection.classList.remove('hidden');
+
+                setTimeout(() => {
+                    progressSection.classList.add('hidden');
+                }, 2000);
+            } catch (error) {
+                alert('Error generating designs: ' + error.message);
+                console.error(error);
+            } finally {
+                generateBtn.disabled = false;
+                generateBtnText.textContent = 'Generate Designs';
+                generateLoader.classList.add('hidden');
+            }
+        });
+
+        // Update progress bar
+        function updateProgress(current, total, message) {
+            const percentage = (current / total) * 100;
+            progressBar.style.width = percentage + '%';
+            progressText.textContent = message;
+        }
+
+        // Generate a single design using PiAPI
+        async function generateDesign(apiKey, userPrompt, jsonGuide, refImages) {
+            // Construct the full prompt
+            let fullPrompt = "You are an expert T-shirt designer, your job is to create a design with 30-50% negative space, plain background, no mockup whatsoever, only the design using the json below as a design style guide if found, and the user's design prompt below.\n\n";
+
+            if (jsonGuide) {
+                fullPrompt += "JSON:\n" + jsonGuide + "\n\n";
+            } else {
+                fullPrompt += "JSON:\nNone\n\n";
+            }
+
+            fullPrompt += "PROMPT:\n" + userPrompt + "\n\n";
+            fullPrompt += "generate the image only, do not respond to this message.";
+
+            // Prepare the request body
+            const requestBody = {
+                prompt: fullPrompt,
+                model: "gemini-2.0-flash-exp",
+                image_num: 1,
+                aspect_ratio: "1:1"
+            };
+
+            // Add reference images if provided
+            if (refImages && refImages.length > 0) {
+                requestBody.images = refImages;
+            }
+
+            // Make API request to PiAPI
+            const response = await fetch('https://api.piapi.ai/api/v1/task', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            // Poll for result if task_id is returned
+            if (data.task_id) {
+                return await pollForResult(apiKey, data.task_id);
+            } else if (data.images && data.images.length > 0) {
+                return { url: data.images[0], taskId: data.task_id };
+            } else {
+                throw new Error('Unexpected API response format');
+            }
+        }
+
+        // Poll for task result
+        async function pollForResult(apiKey, taskId, maxAttempts = 30) {
+            for (let i = 0; i < maxAttempts; i++) {
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+
+                const response = await fetch(`https://api.piapi.ai/api/v1/task/${taskId}`, {
+                    headers: {
+                        'x-api-key': apiKey
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to check task status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.status === 'completed' && data.output && data.output.images && data.output.images.length > 0) {
+                    return { url: data.output.images[0], taskId: taskId };
+                } else if (data.status === 'failed') {
+                    throw new Error('Image generation failed');
+                }
+
+                // Continue polling if still processing
+            }
+
+            throw new Error('Timeout waiting for image generation');
+        }
+
+        // Add design to gallery
+        function addDesignToGallery(design, index) {
+            const card = document.createElement('div');
+            card.className = 'design-card bg-gray-50 rounded-lg overflow-hidden shadow-md cursor-pointer';
+            card.innerHTML = `
+                <img src="${design.url}" alt="Design ${index + 1}" class="w-full h-64 object-cover">
+                <div class="p-4">
+                    <h3 class="font-semibold text-lg mb-2">Design ${index + 1}</h3>
+                    <button class="select-design-btn w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded transition duration-200">
+                        Select for Editing
+                    </button>
+                </div>
+            `;
+
+            card.querySelector('.select-design-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectDesign(index);
+            });
+
+            designsGallery.appendChild(card);
+        }
+
+        // Select a design for editing
+        function selectDesign(index) {
+            selectedDesignIndex = index;
+            const design = generatedDesigns[index];
+
+            // Update UI
+            document.querySelectorAll('.design-card').forEach((card, i) => {
+                if (i === index) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+
+            selectedDesignId.textContent = `Design ${index + 1}`;
+            selectedDesignPreview.src = design.url;
+            editSection.classList.remove('hidden');
+            editPrompt.value = '';
+
+            // Scroll to edit section
+            editSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Apply edits to selected design
+        applyEditBtn.addEventListener('click', async () => {
+            const apiKey = apiKeyInput.value.trim();
+            const edits = editPrompt.value.trim();
+
+            if (!apiKey) {
+                alert('Please enter your PiAPI key');
+                return;
+            }
+
+            if (!edits) {
+                alert('Please describe the edits you want');
+                return;
+            }
+
+            if (selectedDesignIndex === null) {
+                alert('Please select a design first');
+                return;
+            }
+
+            applyEditBtn.disabled = true;
+            editBtnText.textContent = 'Applying Edits...';
+            editLoader.classList.remove('hidden');
+
+            try {
+                const selectedDesign = generatedDesigns[selectedDesignIndex];
+
+                // Create edit prompt that references the original
+                const editFullPrompt = `You are an expert T-shirt designer. Take the existing t-shirt design and modify it according to the following instructions. Maintain 30-50% negative space, plain background, no mockup whatsoever, only the design.\n\nEDIT INSTRUCTIONS:\n${edits}\n\ngenerate the modified image only, do not respond to this message.`;
+
+                // Make API request with the current design as reference
+                const requestBody = {
+                    prompt: editFullPrompt,
+                    model: "gemini-2.0-flash-exp",
+                    image_num: 1,
+                    aspect_ratio: "1:1",
+                    images: [selectedDesign.url] // Use the current design as reference
+                };
+
+                const response = await fetch('https://api.piapi.ai/api/v1/task', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                let editedDesign;
+
+                if (data.task_id) {
+                    editedDesign = await pollForResult(apiKey, data.task_id);
+                } else if (data.images && data.images.length > 0) {
+                    editedDesign = { url: data.images[0], taskId: data.task_id };
+                } else {
+                    throw new Error('Unexpected API response format');
+                }
+
+                // Update the design
+                generatedDesigns[selectedDesignIndex] = editedDesign;
+
+                // Update the gallery
+                const designCard = designsGallery.children[selectedDesignIndex];
+                designCard.querySelector('img').src = editedDesign.url;
+
+                // Update preview
+                selectedDesignPreview.src = editedDesign.url;
+
+                alert('Design updated successfully!');
+                editPrompt.value = '';
+
+            } catch (error) {
+                alert('Error applying edits: ' + error.message);
+                console.error(error);
+            } finally {
+                applyEditBtn.disabled = false;
+                editBtnText.textContent = 'Apply Edits';
+                editLoader.classList.add('hidden');
+            }
+        });
+
+        // Load API key from localStorage if available
+        const savedApiKey = localStorage.getItem('piapi_key');
+        if (savedApiKey) {
+            apiKeyInput.value = savedApiKey;
+        }
+
+        // Save API key to localStorage
+        apiKeyInput.addEventListener('blur', () => {
+            localStorage.setItem('piapi_key', apiKeyInput.value.trim());
+        });
+    </script>
+</body>
+</html>
