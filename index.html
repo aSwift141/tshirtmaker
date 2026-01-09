@@ -726,9 +726,13 @@
                     ` : ''}
 
                     ${job.status === 'failed' ? `
-                        <div class="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+                        <div class="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700 mb-3">
                             <strong>Error:</strong> ${job.error || 'Unknown error'}
                         </div>
+                        <button onclick="regenerateJob(${job.id})"
+                                class="action-btn bg-gray-500 hover:bg-gray-600 text-white rounded transition">
+                            🔄 Regenerate
+                        </button>
                     ` : ''}
                 </div>
             `;
@@ -951,7 +955,7 @@
         // Download image function
         async function downloadImage(url, filename) {
             try {
-                // First try blob method (works for same-origin and CORS-friendly URLs)
+                // Method 1: Try blob method (works for same-origin and CORS-friendly URLs)
                 const response = await fetch(url, { mode: 'cors' });
 
                 if (!response.ok) {
@@ -972,29 +976,78 @@
                 window.URL.revokeObjectURL(blobUrl);
                 console.log('Downloaded successfully via blob method');
             } catch (error) {
-                console.log('Blob method failed, trying direct link method:', error.message);
+                console.log('Blob method failed, trying canvas proxy method:', error.message);
 
-                // Fallback: Try direct link download (works even with CORS restrictions on some browsers)
+                // Method 2: Try canvas proxy (works for many CORS-restricted images)
                 try {
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = filename;
-                    link.target = '_blank'; // Open in new tab as fallback
-                    link.rel = 'noopener noreferrer';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    console.log('Attempted download via direct link method');
+                    await downloadImageViaCanvas(url, filename);
+                    console.log('Downloaded successfully via canvas proxy');
+                } catch (canvasError) {
+                    console.log('Canvas method failed, trying direct link:', canvasError.message);
 
-                    // Show a helpful message
-                    setTimeout(() => {
-                        alert('Download started. If the image opened in a new tab instead, please right-click and select "Save Image As..."');
-                    }, 500);
-                } catch (fallbackError) {
-                    console.error('All download methods failed:', fallbackError);
-                    alert('Could not download automatically. Please right-click the image and select "Save Image As..."');
+                    // Method 3: Direct link fallback
+                    try {
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = filename;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        console.log('Downloaded via direct link method');
+                    } catch (fallbackError) {
+                        console.error('All download methods failed:', fallbackError);
+                        alert('Could not download automatically. Please right-click the image and select "Save Image As..."');
+                    }
                 }
             }
+        }
+
+        // Download image via canvas (works around some CORS restrictions)
+        function downloadImageViaCanvas(url, filename) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous'; // Request CORS
+
+                img.onload = () => {
+                    try {
+                        // Create canvas and draw image
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.naturalWidth;
+                        canvas.height = img.naturalHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+
+                        // Convert to blob and download
+                        canvas.toBlob((blob) => {
+                            if (!blob) {
+                                reject(new Error('Failed to create blob from canvas'));
+                                return;
+                            }
+
+                            const blobUrl = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.download = filename;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(blobUrl);
+
+                            resolve();
+                        }, 'image/png');
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+
+                img.onerror = () => {
+                    reject(new Error('Failed to load image'));
+                };
+
+                // Add timestamp to bust cache and help with CORS
+                const urlWithTimestamp = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+                img.src = urlWithTimestamp;
+            });
         }
 
         // Load API key from localStorage if available
